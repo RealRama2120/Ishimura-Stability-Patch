@@ -192,15 +192,13 @@ void PrepareBorderlessPresentation(
     if (!window)
         window = WindowFix::TrackedWindow();
 
-    RECT bounds = {};
-    if (!WindowFix::GetBorderlessBounds(window, bounds)) {
+    UINT width = 0;
+    UINT height = 0;
+    if (!WindowFix::GetBorderlessBackbufferSize(window, width, height)) {
         Logger::Write(
-            L"Could not resolve the target monitor before borderless D3D9 setup; preserving requested backbuffer size.");
+            L"Could not resolve physical monitor pixels before borderless D3D9 setup; preserving requested backbuffer size.");
         return;
     }
-
-    const UINT width = static_cast<UINT>(bounds.right - bounds.left);
-    const UINT height = static_cast<UINT>(bounds.bottom - bounds.top);
     if (!GamePatches::PrepareBorderlessRenderSize(width, height)) {
         Logger::Write(
             L"Native monitor-sized backbuffer was not forced because the engine render dimensions could not be safely synchronized.");

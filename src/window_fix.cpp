@@ -98,6 +98,33 @@ bool GetBorderlessBounds(HWND window, RECT& bounds) {
         GetMonitorBoundsInternal(window, bounds);
 }
 
+bool GetBorderlessBackbufferSize(HWND window, UINT& width, UINT& height) {
+    if (!window || !IsWindow(window))
+        return false;
+
+    // Resolve the display mode in physical pixels. Even if another loader
+    // prevents early DPI awareness, the D3D9 backbuffer and engine render
+    // dimensions must not inherit a virtualized monitor rectangle.
+    MONITORINFOEXW monitor = {};
+    monitor.cbSize = sizeof(monitor);
+    const HMONITOR nearest = MonitorFromWindow(
+        window, MONITOR_DEFAULTTONEAREST);
+    if (!nearest || !GetMonitorInfoW(
+            nearest, reinterpret_cast<LPMONITORINFO>(&monitor)))
+        return false;
+
+    DEVMODEW mode = {};
+    mode.dmSize = sizeof(mode);
+    if (!EnumDisplaySettingsExW(
+            monitor.szDevice, ENUM_CURRENT_SETTINGS, &mode, 0) ||
+        mode.dmPelsWidth == 0 || mode.dmPelsHeight == 0)
+        return false;
+
+    width = mode.dmPelsWidth;
+    height = mode.dmPelsHeight;
+    return true;
+}
+
 bool ApplyBorderless(HWND window) {
     if (!window || !IsWindow(window))
         return false;

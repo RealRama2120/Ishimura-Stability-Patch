@@ -3,11 +3,12 @@
 An original compatibility and bug-fix mod for **Dead Space (2008)**. The
 default configuration favors correct game behavior over very high frame rates.
 
-Version 1.0.2 has passed the automated proxy, subtitle, borderless, and native
-Direct3D9 device-recreation tests. It has also launched through Steam and EA App
-with the 4GB mod present; a short Steam gameplay check passed. Complete
-playthrough coverage across every storefront, controller, and hardware
-configuration is not claimed.
+Version 1.0.3 has passed the automated proxy, subtitle, borderless, and native
+Direct3D9 device-recreation tests. Its new startup display fix passed two
+normal EA App launch/exit cycles at 3840x2160 with 175% Windows scaling.
+Version 1.0.2 previously launched through Steam and EA App with the 4GB mod
+present, including a short Steam gameplay check. The new 1.0.3 change has not
+been retested on Steam or every hardware configuration.
 
 ## What it fixes
 
@@ -22,9 +23,11 @@ configuration is not claimed.
 - **Borderless windowed:** applies borderless geometry only when D3D confirms
   that the game is windowed, uses the monitor containing the game window, and
   synchronizes the engine render size and D3D backbuffer to that monitor before
-  device creation. It periodically verifies/repairs the exact client size and
-  borderless styles. It never converts exclusive fullscreen behind the
-  player's back.
+  device creation. It sets system DPI awareness before the game creates a window
+  and resolves the physical monitor pixel size, preventing scaled Windows
+  coordinates from squashing the startup image. It periodically verifies/repairs
+  the exact client size and borderless styles. It never converts exclusive
+  fullscreen behind the player's back.
 - **Texture filtering:** upgrades linear min/mag filters to supported
   anisotropic filtering and point mip filtering to trilinear. It leaves
   deliberately point-sampled textures alone.
@@ -105,7 +108,7 @@ the successful EA/ReShade test synchronized the engine, backbuffer, client, and
 monitor to 3840x2160 and measured 60 FPS.
 
 A separate three-way Fullscreen / Windowed / Borderless entry is not injected
-into the original menu in v1.0.2. That menu is serialized in the game's
+into the original menu in v1.0.3. That menu is serialized in the game's
 frontend asset and shares global On/Off controls with other settings, so a
 label-only replacement would display the wrong state and is not a real option.
 

@@ -15,6 +15,8 @@ namespace Runtime {
 
 HMODULE module = nullptr;
 bool isDeadSpace = false;
+bool earlyDpiAwarenessApplied = false;
+DWORD earlyDpiAwarenessError = ERROR_SUCCESS;
 DWORD_PTR earlyAffinityMask = 0;
 bool earlyAffinityApplied = false;
 
@@ -70,6 +72,8 @@ DWORD WINAPI WorkerThread(void*) {
     Logger::Write(L"Early CPU compatibility limit: applied=%u, mask=0x%p.",
         earlyAffinityApplied ? 1u : 0u,
         reinterpret_cast<void*>(earlyAffinityMask));
+    Logger::Write(L"Early system DPI awareness: applied=%u, error=%lu.",
+        earlyDpiAwarenessApplied ? 1u : 0u, earlyDpiAwarenessError);
 
     // The earliest loader-safe pass uses eight processors. A lower configured
     // value can be applied here before normal game initialization proceeds.
@@ -104,6 +108,14 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, void*) {
         Runtime::isDeadSpace = Runtime::IsDeadSpaceProcess();
         if (!Runtime::isDeadSpace)
             return TRUE;
+
+        // Borderless dimensions and the D3D backbuffer must use the same
+        // physical-pixel coordinate system. Set this before the game creates
+        // its window; the worker thread may start too late for Windows to
+        // accept a process-wide DPI awareness change.
+        Runtime::earlyDpiAwarenessApplied = SetProcessDPIAware() != FALSE;
+        if (!Runtime::earlyDpiAwarenessApplied)
+            Runtime::earlyDpiAwarenessError = GetLastError();
 
         // This runs before the legacy CPU enumeration that can overflow on
         // modern high-core-count systems. It does no file or network I/O.

@@ -37,7 +37,7 @@ $regressionSmoke = Join-Path $projectRoot 'build\tests\RegressionSmoke.exe'
 if ($LASTEXITCODE -ne 0) { throw 'Subtitle/borderless regression test failed.' }
 
 if ($Package) {
-    $releaseName = 'Ishimura_Stability_Patch_v1.0.2_Rama2120'
+    $releaseName = 'Ishimura_Stability_Patch_v1.0.3_Rama2120'
     $stagingRoot = Join-Path $projectRoot 'build\package'
     $staging = Join-Path $stagingRoot $releaseName
     if (Test-Path -LiteralPath $staging) {

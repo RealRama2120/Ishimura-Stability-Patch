@@ -111,7 +111,18 @@ bool TestBorderlessRepair() {
         targetBounds.right > targetBounds.left &&
         targetBounds.bottom > targetBounds.top;
 
-    const bool initiallyApplied = targetResolved &&
+    UINT physicalWidth = 0;
+    UINT physicalHeight = 0;
+    const bool physicalResolved =
+        WindowFix::GetBorderlessBackbufferSize(
+            window, physicalWidth, physicalHeight) &&
+        physicalWidth >= 320 && physicalHeight >= 200;
+    std::printf("monitor coordinates=%ldx%ld, backbuffer pixels=%ux%u\n",
+        targetBounds.right - targetBounds.left,
+        targetBounds.bottom - targetBounds.top,
+        physicalWidth, physicalHeight);
+
+    const bool initiallyApplied = targetResolved && physicalResolved &&
         WindowFix::ApplyBorderless(window) &&
         WindowFix::IsBorderlessActive() &&
         WindowFix::TrackedWindow() == window &&

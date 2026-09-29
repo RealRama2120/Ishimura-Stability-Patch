@@ -1,0 +1,8 @@
+Version 1.0.3
+
+- Fixed the stretched/squashed startup image seen with non-100% Windows display scaling. The game now becomes system-DPI-aware before creating its window, and borderless rendering resolves the monitor's physical pixel size for the engine and D3D9 backbuffer.
+- Preserved the existing CPU, 60 FPS timing, VSync, filtering, subtitle, XInput forwarding, and borderless behavior.
+
+The mismatch was observed at 3840x2160 with 175% Windows scaling before the fix. Two candidate EA launches and one launch with the exact 1.0.3 release binary showed a normal full-screen image; logs recorded a 3840x2160 window and backbuffer. Automated proxy and regression tests passed. The new fix was not retested on Steam or ROG Ally; earlier 1.0.2 Steam tests do not establish 1.0.3 behavior there.
+
+Install or update through the existing Dead Space (2008) Vortex setup. Do not combine with another xinput1_3.dll proxy.
