@@ -1,0 +1,17 @@
+# Local build products and private runtime evidence
+build/
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.log
+*.tlog
+*.recipe
+*.lastbuildstate
+
+# Game/user data must never be committed
+Dead Space.exe
+settings.txt
+*.sav
+
