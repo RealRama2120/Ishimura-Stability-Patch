@@ -116,4 +116,3 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, void*) {
     }
     return TRUE;
 }
-

@@ -3,10 +3,11 @@
 An original compatibility and bug-fix mod for **Dead Space (2008)**. The
 default configuration favors correct game behavior over very high frame rates.
 
-Version 1.0.1 has passed the automated proxy, subtitle, and borderless
-regression tests as well as an installed EA-build smoke test with ReShade at
-3840x2160 and 60 FPS. Complete playthrough coverage across every storefront,
-controller, and hardware configuration is not claimed.
+Version 1.0.2 has passed the automated proxy, subtitle, borderless, and native
+Direct3D9 device-recreation tests. It has also launched through Steam and EA App
+with the 4GB mod present; a short Steam gameplay check passed. Complete
+playthrough coverage across every storefront, controller, and hardware
+configuration is not claimed.
 
 ## What it fixes
 
@@ -104,7 +105,7 @@ the successful EA/ReShade test synchronized the engine, backbuffer, client, and
 monitor to 3840x2160 and measured 60 FPS.
 
 A separate three-way Fullscreen / Windowed / Borderless entry is not injected
-into the original menu in v1.0.1. That menu is serialized in the game's
+into the original menu in v1.0.2. That menu is serialized in the game's
 frontend asset and shares global On/Off controls with other settings, so a
 label-only replacement would display the wrong state and is not a real option.
 

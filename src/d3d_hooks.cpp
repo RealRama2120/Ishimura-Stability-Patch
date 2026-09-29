@@ -33,15 +33,29 @@ constexpr std::size_t kD3D9CreateDeviceIndex = 16;
 constexpr std::size_t kDeviceResetIndex = 16;
 constexpr std::size_t kDevicePresentIndex = 17;
 constexpr std::size_t kDeviceSetSamplerStateIndex = 69;
-constexpr std::size_t kDeviceVtableEntries = 119;
 
 CreateDeviceFn g_originalCreateDevice = nullptr;
-ResetFn g_originalReset = nullptr;
-PresentFn g_originalPresent = nullptr;
-SetSamplerStateFn g_originalSetSamplerState = nullptr;
+struct DeviceDispatch {
+    void** table;
+    ResetFn reset;
+    PresentFn present;
+    SetSamplerStateFn sampler;
+    DeviceDispatch* next;
+};
+SRWLOCK g_dispatchLock = SRWLOCK_INIT;
+DeviceDispatch* g_deviceDispatch = nullptr;
 
-void** g_originalDeviceVtable = nullptr;
-void** g_clonedDeviceVtable = nullptr;
+DeviceDispatch OriginalDispatch(IDirect3DDevice9* device) {
+    DeviceDispatch result = {};
+    if (!device) return result;
+    void** table = *reinterpret_cast<void***>(device);
+    AcquireSRWLockShared(&g_dispatchLock);
+    for (auto entry = g_deviceDispatch; entry; entry = entry->next) {
+        if (entry->table == table) { result = *entry; break; }
+    }
+    ReleaseSRWLockShared(&g_dispatchLock);
+    return result;
+}
 
 std::atomic<bool> g_deviceObserved(false);
 
@@ -237,7 +251,8 @@ void ObservePresentationParameters(
 
 HRESULT STDMETHODCALLTYPE HookedReset(
     IDirect3DDevice9* device, D3DPRESENT_PARAMETERS* parameters) {
-    if (!g_originalReset || !parameters)
+    const auto original = OriginalDispatch(device).reset;
+    if (!original || !parameters)
         return D3DERR_INVALIDCALL;
 
     D3DPRESENT_PARAMETERS adjusted = *parameters;
@@ -246,7 +261,7 @@ HRESULT STDMETHODCALLTYPE HookedReset(
         window = WindowFix::TrackedWindow();
     FixPresentationInterval(adjusted);
     PrepareBorderlessPresentation(adjusted, window);
-    const HRESULT result = g_originalReset(device, &adjusted);
+    const HRESULT result = original(device, &adjusted);
     if (SUCCEEDED(result)) {
         *parameters = adjusted;
         g_nextFrame.QuadPart = 0;
@@ -258,10 +273,11 @@ HRESULT STDMETHODCALLTYPE HookedReset(
 HRESULT STDMETHODCALLTYPE HookedPresent(
     IDirect3DDevice9* device, const RECT* source, const RECT* destination,
     HWND overrideWindow, const RGNDATA* dirtyRegion) {
-    if (!g_originalPresent)
+    const auto original = OriginalDispatch(device).present;
+    if (!original)
         return D3DERR_INVALIDCALL;
 
-    const HRESULT result = g_originalPresent(
+    const HRESULT result = original(
         device, source, destination, overrideWindow, dirtyRegion);
 
     if (Config::settings.borderlessWindowed &&
@@ -281,11 +297,12 @@ HRESULT STDMETHODCALLTYPE HookedPresent(
 HRESULT STDMETHODCALLTYPE HookedSetSamplerState(
     IDirect3DDevice9* device, DWORD sampler,
     D3DSAMPLERSTATETYPE type, DWORD value) {
-    if (!g_originalSetSamplerState)
+    const auto original = OriginalDispatch(device).sampler;
+    if (!original)
         return D3DERR_INVALIDCALL;
 
     if (!Config::settings.anisotropicFiltering || sampler > 3)
-        return g_originalSetSamplerState(device, sampler, type, value);
+        return original(device, sampler, type, value);
 
     const DWORD requested = std::min<DWORD>(
         static_cast<DWORD>(Config::settings.maxAnisotropy),
@@ -293,12 +310,12 @@ HRESULT STDMETHODCALLTYPE HookedSetSamplerState(
 
     if (type == D3DSAMP_MINFILTER && value == D3DTEXF_LINEAR &&
         (g_filterCaps & D3DPTFILTERCAPS_MINFANISOTROPIC) != 0) {
-        g_originalSetSamplerState(
+        original(
             device, sampler, D3DSAMP_MAXANISOTROPY, requested);
         value = D3DTEXF_ANISOTROPIC;
     } else if (type == D3DSAMP_MAGFILTER && value == D3DTEXF_LINEAR &&
         (g_filterCaps & D3DPTFILTERCAPS_MAGFANISOTROPIC) != 0) {
-        g_originalSetSamplerState(
+        original(
             device, sampler, D3DSAMP_MAXANISOTROPY, requested);
         value = D3DTEXF_ANISOTROPIC;
     } else if (type == D3DSAMP_MIPFILTER && value == D3DTEXF_POINT &&
@@ -306,7 +323,7 @@ HRESULT STDMETHODCALLTYPE HookedSetSamplerState(
         value = D3DTEXF_LINEAR;
     }
 
-    return g_originalSetSamplerState(device, sampler, type, value);
+    return original(device, sampler, type, value);
 }
 
 bool HookDevice(IDirect3DDevice9* device) {
@@ -317,35 +334,53 @@ bool HookDevice(IDirect3DDevice9* device) {
     if (!current)
         return false;
 
-    if (g_clonedDeviceVtable) {
-        *reinterpret_cast<void***>(device) = g_clonedDeviceVtable;
+    AcquireSRWLockExclusive(&g_dispatchLock);
+    DeviceDispatch* entry = g_deviceDispatch;
+    while (entry && entry->table != current) entry = entry->next;
+    if (entry && current[kDeviceResetIndex] == reinterpret_cast<void*>(&HookedReset) &&
+        current[kDevicePresentIndex] == reinterpret_cast<void*>(&HookedPresent) &&
+        current[kDeviceSetSamplerStateIndex] == reinterpret_cast<void*>(&HookedSetSamplerState)) {
+        ReleaseSRWLockExclusive(&g_dispatchLock);
         return true;
     }
+    bool newEntry = entry == nullptr;
+    if (newEntry) entry = static_cast<DeviceDispatch*>(HeapAlloc(
+        GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(DeviceDispatch)));
+    if (!entry) { ReleaseSRWLockExclusive(&g_dispatchLock); return false; }
 
-    const std::size_t bytes = kDeviceVtableEntries * sizeof(void*);
-    void** clone = static_cast<void**>(VirtualAlloc(
-        nullptr, bytes, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE));
-    if (!clone)
-        return false;
-
-    std::memcpy(clone, current, bytes);
-    g_originalDeviceVtable = current;
-    g_originalReset = reinterpret_cast<ResetFn>(clone[kDeviceResetIndex]);
-    g_originalPresent = reinterpret_cast<PresentFn>(clone[kDevicePresentIndex]);
-    g_originalSetSamplerState = reinterpret_cast<SetSamplerStateFn>(
-        clone[kDeviceSetSamplerStateIndex]);
-
-    clone[kDeviceResetIndex] = reinterpret_cast<void*>(&HookedReset);
-    clone[kDevicePresentIndex] = reinterpret_cast<void*>(&HookedPresent);
-    clone[kDeviceSetSamplerStateIndex] =
-        reinterpret_cast<void*>(&HookedSetSamplerState);
-
+    // Windows D3D9 uses private device dispatch entries beyond the 119 public
+    // IDirect3DDevice9 methods. Replacing the object table with a 119-entry
+    // clone discards them (Steam crash: d3d9 calls slot 156 at +0x270).
+    // Preserve the complete runtime-owned table and change only our three slots.
+    const std::size_t bytes =
+        (kDeviceSetSamplerStateIndex - kDeviceResetIndex + 1) * sizeof(void*);
     DWORD oldProtect = 0;
-    VirtualProtect(clone, bytes, PAGE_READONLY, &oldProtect);
-    g_clonedDeviceVtable = clone;
-    *reinterpret_cast<void***>(device) = clone;
+    if (!VirtualProtect(current + kDeviceResetIndex, bytes,
+                        PAGE_READWRITE, &oldProtect)) {
+        if (newEntry) HeapFree(GetProcessHeap(), 0, entry);
+        ReleaseSRWLockExclusive(&g_dispatchLock);
+        return false;
+    }
 
-    Logger::Write(L"Installed per-device D3D9 hooks without patching D3D code.");
+    entry->table = current;
+    entry->reset = reinterpret_cast<ResetFn>(current[kDeviceResetIndex]);
+    entry->present = reinterpret_cast<PresentFn>(current[kDevicePresentIndex]);
+    entry->sampler = reinterpret_cast<SetSamplerStateFn>(current[kDeviceSetSamplerStateIndex]);
+    if (newEntry) { entry->next = g_deviceDispatch; g_deviceDispatch = entry; }
+
+    InterlockedExchangePointer(current + kDeviceResetIndex,
+        reinterpret_cast<void*>(&HookedReset));
+    InterlockedExchangePointer(current + kDevicePresentIndex,
+        reinterpret_cast<void*>(&HookedPresent));
+    InterlockedExchangePointer(current + kDeviceSetSamplerStateIndex,
+        reinterpret_cast<void*>(&HookedSetSamplerState));
+    DWORD ignored = 0;
+    if (!VirtualProtect(current + kDeviceResetIndex, bytes, oldProtect, &ignored))
+        Logger::Write(L"D3D9 dispatch hooks installed, but table protection restoration failed (%lu).", GetLastError());
+
+    ReleaseSRWLockExclusive(&g_dispatchLock);
+
+    Logger::Write(L"Installed D3D9 hooks while preserving the runtime's complete device dispatch table.");
     return true;
 }
 

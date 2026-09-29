@@ -1,0 +1,8 @@
+Version 1.0.2
+
+- Fixed the Steam startup crash caused by truncating the Direct3D9 device dispatch table.
+- Preserves the complete runtime table, including private entries, and handles recreated devices safely.
+- Preserves the existing CPU, timing/FPS, VSync, borderless, filtering, subtitle, XInput, and default-configuration behavior.
+- Tested through Steam and EA App, including the combined 4GB stack; a short Steam gameplay check passed.
+
+The previous 1.0.1 file remains available as a rollback option.
