@@ -1,14 +1,36 @@
 # Ishimura Stability Patch
 
-An original compatibility and bug-fix mod for **Dead Space (2008)**. The
-default configuration favors correct game behavior over very high frame rates.
+![Version](https://img.shields.io/badge/version-1.0.3-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Platform](https://img.shields.io/badge/platform-Windows-0078D6)
+![Game](https://img.shields.io/badge/game-Dead%20Space%20(2008)-c41e1f)
 
-Version 1.0.3 has passed the automated proxy, subtitle, borderless, and native
-Direct3D9 device-recreation tests. Its new startup display fix passed two
-normal EA App launch/exit cycles at 3840x2160 with 175% Windows scaling.
-Version 1.0.2 previously launched through Steam and EA App with the 4GB mod
-present, including a short Steam gameplay check. The new 1.0.3 change has not
-been retested on Steam or every hardware configuration.
+**An original, from-scratch compatibility and bug-fix mod for Dead Space (2008) on PC.**
+It makes the 2008 game run correctly on modern hardware: fixes startup crashes on
+high-core-count CPUs, keeps physics and audio stable with a safe 60 FPS default,
+adds proper borderless windowed mode, corrects VSync, scales subtitles for high
+resolutions, and enables anisotropic filtering where the hardware supports it.
+
+## Is this a copy of DeadSpace2008Fixes?
+
+No. Ishimura Stability Patch is an independent implementation — it contains no
+source code, binaries, libraries, or other assets from DeadSpace2008Fixes. That
+project was consulted as a research reference and is credited in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Every overlapping feature is
+implemented differently:
+
+| Feature | DeadSpace2008Fixes | Ishimura Stability Patch |
+|---|---|---|
+| CPU crash fix | Hardcodes affinity mask `0xFF` | Reads the process's allowed mask and selects permitted processors, respecting launcher/VM/user restrictions |
+| VSync | Byte-patches two engine code sites | Rewrites the presentation interval at the D3D9 API boundary |
+| Subtitle scaling | Assembly hook mutating stored subtitle fields from desktop metrics | Computes scale per call from render height; never touches stored fields |
+| Borderless window | Intercepts window creation, forces primary monitor | Fixes up the confirmed game window on its nearest monitor, verifies geometry, repairs later changes |
+| High-FPS timing | Enables the hidden global hi-res timer flag | Conservative 60 FPS safety cap; higher rates need an explicit unsafe opt-in |
+| Anisotropic filtering | Forces AF broadly, including special-purpose samplers | Upgrades only compatible samplers, checks hardware caps first |
+
+The full feature-by-feature breakdown is documented in
+[DEADSPACE2008FIXES_COMPARISON.md](DEADSPACE2008FIXES_COMPARISON.md), and the
+complete source is in [`src/`](src/).
 
 ## What it fixes
 
@@ -39,7 +61,7 @@ been retested on Steam or every hardware configuration.
   private ordinals 100-103 to Windows. It does not replace controller input,
   start SDL, or patch mouse behavior.
 
-## Important differences from DeadSpace2008Fixes
+## Deliberately not included
 
 This project does **not** enable the game's hidden global high-resolution timer
 flag. That broad clock change is not a complete Havok fix and can change timing
@@ -53,15 +75,14 @@ timing-critical core would make controller, audio, or compatibility regressions
 harder to isolate. A candidate save-string replacement was rejected during
 real EA-build testing because it caused a reproducible access violation.
 
-## Credits and licensing
+## Test status
 
-DeadSpace2008Fixes by Seamus McGrath was consulted during research into known
-Dead Space (2008) compatibility issues:
-
-https://github.com/seamusduncmcgrath/DeadSpace2008Fixes
-
-Ishimura Stability Patch is a separate implementation and does not contain
-source code, binaries, libraries, or other assets from DeadSpace2008Fixes.
+Version 1.0.3 has passed the automated proxy, subtitle, borderless, and native
+Direct3D9 device-recreation tests. Its new startup display fix passed two
+normal EA App launch/exit cycles at 3840x2160 with 175% Windows scaling.
+Version 1.0.2 previously launched through Steam and EA App with the 4GB mod
+present, including a short Steam gameplay check. The new 1.0.3 change has not
+been retested on Steam or every hardware configuration.
 
 ## Install
 
@@ -125,3 +146,15 @@ Tools installed. It builds Release Win32, verifies the XInput exports and
 forwarding path, and creates a versioned ZIP in the workspace `outputs` folder.
 
 No game file or third-party binary is distributed.
+
+## Credits and licensing
+
+DeadSpace2008Fixes by Seamus McGrath was consulted during research into known
+Dead Space (2008) compatibility issues:
+
+https://github.com/seamusduncmcgrath/DeadSpace2008Fixes
+
+Ishimura Stability Patch is a separate implementation and does not contain
+source code, binaries, libraries, or other assets from DeadSpace2008Fixes.
+
+MIT licensed — see [LICENSE](LICENSE).
