@@ -79,6 +79,6 @@ a ReShade HDR shader or a GPU-driver HDR overlay as proof of Windows Auto HDR.
 
 ## Release gate
 
-Do not call the mod final until the physics and audio tests pass on at least
-EA App and Steam/GOG, with ReShade or DXVK, an Xbox controller, and a complete
-playthrough. Until then, publish it as Beta and describe exactly what was tested.
+Full validation means the physics and audio tests pass on at least EA App and Steam/GOG, with ReShade or DXVK, an Xbox controller, and a complete playthrough.
+
+Status as of v1.0.3: the complete-playthrough gate has been met — the entire game was played through with v1.0.3 installed, previous versions were played through in full, and every release has been manually tested. Still open: retesting the 1.0.3 changes on Steam and covering every hardware configuration. Describe exactly what was tested and do not claim testing that was not done.
