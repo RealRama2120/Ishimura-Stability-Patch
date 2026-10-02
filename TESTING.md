@@ -1,4 +1,4 @@
-# Beta test checklist
+# Test checklist
 
 Use a clean game install for the first pass. Keep
 `IshimuraStabilityPatch.log` from every failed run.
