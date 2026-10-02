@@ -77,12 +77,12 @@ real EA-build testing because it caused a reproducible access violation.
 
 ## Test status
 
-Version 1.0.3 has passed the automated proxy, subtitle, borderless, and native
-Direct3D9 device-recreation tests. Its new startup display fix passed two
-normal EA App launch/exit cycles at 3840x2160 with 175% Windows scaling.
-Version 1.0.2 previously launched through Steam and EA App with the 4GB mod
-present, including a short Steam gameplay check. The new 1.0.3 change has not
-been retested on Steam or every hardware configuration.
+Version 1.0.3 has passed the automated proxy, subtitle, borderless, and native Direct3D9 device-recreation tests, plus a full manual playthrough of the entire game with v1.0.3 installed. Every release has been manually tested, and previous versions were also played through in full. The new startup display fix passed two normal EA App launch/exit cycles at 3840x2160 with 175% Windows scaling.
+
+Version 1.0.2 previously launched through Steam and EA App with the 4GB mod present, including a short Steam gameplay check. The new 1.0.3 changes have not been retested on Steam or every hardware configuration.
+
+
+
 
 ## Install
 
