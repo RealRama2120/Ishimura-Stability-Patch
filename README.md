@@ -1,3 +1,7 @@
+<p align="center">
+  <img src=".github/social-preview.png" width="480" alt="Ishimura Stability Patch">
+</p>
+
 # Ishimura Stability Patch
 
 ![Version](https://img.shields.io/badge/version-1.0.3-blue)
